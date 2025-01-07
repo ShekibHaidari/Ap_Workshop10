@@ -1,29 +1,25 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
-/*
- * This is a simple chat server that listens on port 9091 and accepts
- * @author Ahmad Shekib Haidari 
- * @version 1.0
- * intellij IDE auto complete code
- * ai auto complete code
- * 
- * Ap Wokshop10 
+
+/**
+ * Author: Ahmad Shekib Haidari
+ * with help of ai and intellij idea auto code generator
+ * Server class for the chat application.
+ * It listens for incoming connections and creates a new thread for each client.
+ *
  */
 public class Server {
-    private static Set<Socket> clientList = Collections.synchronizedSet(new HashSet<>());
+    private static Set<Socket> clientSockets = Collections.synchronizedSet(new HashSet<>());
+
     public static void main(String[] args) {
-        try (ServerSocket serverSocket = new ServerSocket(9091)) {
-            System.out.println("<-----------------Server started on port 9091:------------------- >");
+        try (ServerSocket serverSocket = new ServerSocket(1111)) {
+            System.out.println("Server started on port 1111");
 
             while (true) {
-                try {
-                    Socket clientSocket = serverSocket.accept();
-                    clientList.add(clientSocket);
-                    new ClientHandler(clientSocket).start();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                Socket clientSocket = serverSocket.accept();
+                clientSockets.add(clientSocket);
+                new ClientHandler(clientSocket).start();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -41,26 +37,22 @@ public class Server {
             try (BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                  PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true)) {
 
-                out.println("Please write your username: ");
+                out.println("Enter your Name: ");
                 String username = in.readLine();
-                System.out.println(username + " add to the chat .");
+                System.out.println(username + " conect with the server.");
+                broadcastMessage(username + " joined the chat.", clientSocket);
 
                 String message;
                 while ((message = in.readLine()) != null) {
                     if ("exit".equalsIgnoreCase(message)) {
-                        System.out.println(username + " left our chat.");
-                        clientList.remove(clientSocket);
+                        System.out.println(username + " leave chat.");
+                        broadcastMessage(username + " left the chat.", clientSocket);
+                        clientSockets.remove(clientSocket);
                         break;
                     }
 
-                    synchronized (clientList) {
-                        for (Socket socket : clientList) {
-                            if (socket != clientSocket) {
-                                PrintWriter socketOut = new PrintWriter(socket.getOutputStream(), true);
-                                socketOut.println(username + ": " + message);
-                            }
-                        }
-                    }
+                    System.out.println(username + ": " + message);
+                    broadcastMessage(username + ": " + message, clientSocket);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -69,6 +61,21 @@ public class Server {
                     clientSocket.close();
                 } catch (IOException e) {
                     e.printStackTrace();
+                }
+            }
+        }
+
+        private void broadcastMessage(String message, Socket senderSocket) {
+            synchronized (clientSockets) {
+                for (Socket socket : clientSockets) {
+                    if (socket != senderSocket) {
+                        try {
+                            PrintWriter socketOut = new PrintWriter(socket.getOutputStream(), true);
+                            socketOut.println(message);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
                 }
             }
         }
